@@ -1,7 +1,20 @@
 import streamlit as st
+import subprocess
+import sys
+
+# --- TRUCO: Forzar instalación de Plotly ---
+# Esto revisa si plotly está instalado. Si no, lo instala automáticamente.
+try:
+    import plotly.express as px
+except ImportError:
+    st.toast("Instalando librerías necesarias... Espere un momento.", icon="⏳")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "plotly"])
+    import plotly.express as px
+# -------------------------------------------
+
+# ... Aquí siguen tus otros imports normales
 import pandas as pd
 import numpy as np
-import plotly.express as px
 from datetime import datetime, timedelta
 
 # --- Configuración de la Página ---
