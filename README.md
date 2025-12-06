@@ -47,5 +47,5 @@ Sigue estos pasos para ejecutar el proyecto en tu máquina local:
 
 **1. Clonar el repositorio**
 ```bash
-git clone [https://github.com/AlexanderGaliano18/EduTech-ITSM.git](https://github.com/AlexanderGaliano18/EduTech-ITSM.git)
-cd EduTech-ITSM
+git clone [https://github.com/AlexanderGaliano18/EduTech.git](https://github.com/AlexanderGaliano18/EduTech.git)
+cd EduTech
