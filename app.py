@@ -14,6 +14,7 @@ st.set_page_config(
 if 'df_activos' not in st.session_state:
     # Datos simulados iniciales
     laboratorios = ['Lab Cómputo 1', 'Lab Cómputo 2', 'Biblioteca', 'Admin']
+    # Estados iniciales estándar
     estados = ['Operativo', 'Mantenimiento', 'Obsoleto', 'Baja']
     
     data = []
@@ -35,19 +36,22 @@ with st.sidebar:
     st.title("EduTech ITSM ⚙️")
     st.caption("Panel de Administración")
     
-    # Usamos Tabs para separar las acciones claramente
     tab1, tab2, tab3 = st.tabs(["➕ Registrar", "✏️ Editar", "🗑️ Borrar"])
     
+    # Listas de opciones comunes
+    opciones_ubicacion = ['Lab Cómputo 1', 'Lab Cómputo 2', 'Biblioteca', 'Admin', 'Almacén']
+    opciones_estado = ['Operativo', 'Mantenimiento', 'Obsoleto', 'Baja', 'Repotenciada'] # ¡Nuevo Estado!
+    opciones_ram = ['4GB', '8GB', '16GB', '32GB']
+
     # --- PESTAÑA 1: REGISTRAR (CREATE) ---
     with tab1:
         st.subheader("Nuevo Activo")
-        # Generar ID automático sugerido
         next_id = int(df['ID_Activo'].str.split('-').str[1].max()) + 1 if not df.empty else 1000
         
         reg_id = st.text_input("ID", value=f"PC-{next_id}", key="reg_id")
-        reg_ubic = st.selectbox("Ubicación", ['Lab Cómputo 1', 'Lab Cómputo 2', 'Biblioteca', 'Admin', 'Almacén'], key="reg_ubi")
-        reg_estado = st.selectbox("Estado", ['Operativo', 'Mantenimiento', 'Obsoleto', 'Baja'], key="reg_est")
-        reg_ram = st.selectbox("RAM", ['4GB', '8GB', '16GB', '32GB'], key="reg_ram")
+        reg_ubic = st.selectbox("Ubicación", opciones_ubicacion, key="reg_ubi")
+        reg_estado = st.selectbox("Estado", opciones_estado, key="reg_est")
+        reg_ram = st.selectbox("RAM", opciones_ram, key="reg_ram")
         reg_ant = st.number_input("Años", min_value=0, value=0, key="reg_ant")
         
         if st.button("💾 Guardar Nuevo", type="primary"):
@@ -59,29 +63,43 @@ with st.sidebar:
                     'Estado': reg_estado, 'RAM': reg_ram, 
                     'Antigüedad_Años': reg_ant
                 }
-                # Agregar al DataFrame
                 st.session_state.df_activos = pd.concat([df, pd.DataFrame([nuevo_dato])], ignore_index=True)
                 st.toast(f"Activo {reg_id} registrado exitosamente!", icon="✅")
                 st.rerun()
 
-    # --- PESTAÑA 2: EDITAR (UPDATE) ---
+    # --- PESTAÑA 2: EDITAR (UPDATE - MEJORADO) ---
     with tab2:
-        st.subheader("Actualizar Equipo")
+        st.subheader("Actualizar / Repotenciar")
         if not df.empty:
             edit_id = st.selectbox("Seleccionar ID", df['ID_Activo'].sort_values(), key="edit_select")
             
-            # Obtener datos actuales para pre-llenar
+            # Obtener datos actuales para PRE-LLENAR los campos
             dato_actual = df[df['ID_Activo'] == edit_id].iloc[0]
             
-            # Formulario de edición
-            new_ubic = st.selectbox("Nueva Ubicación", ['Lab Cómputo 1', 'Lab Cómputo 2', 'Biblioteca', 'Admin', 'Almacén'], index=['Lab Cómputo 1', 'Lab Cómputo 2', 'Biblioteca', 'Admin', 'Almacén'].index(dato_actual['Ubicación']), key="edit_ubi")
-            new_est = st.selectbox("Nuevo Estado", ['Operativo', 'Mantenimiento', 'Obsoleto', 'Baja'], index=['Operativo', 'Mantenimiento', 'Obsoleto', 'Baja'].index(dato_actual['Estado']), key="edit_est")
+            # Índices para los selectbox (para que muestren el valor actual por defecto)
+            idx_ubic = opciones_ubicacion.index(dato_actual['Ubicación']) if dato_actual['Ubicación'] in opciones_ubicacion else 0
+            idx_estado = opciones_estado.index(dato_actual['Estado']) if dato_actual['Estado'] in opciones_estado else 0
+            idx_ram = opciones_ram.index(dato_actual['RAM']) if dato_actual['RAM'] in opciones_ram else 0
             
-            if st.button("🔄 Actualizar Datos"):
+            # Formulario de edición con valores actuales
+            new_ubic = st.selectbox("Ubicación", opciones_ubicacion, index=idx_ubic, key="edit_ubi")
+            new_est = st.selectbox("Estado", opciones_estado, index=idx_estado, key="edit_est")
+            
+            col_edit1, col_edit2 = st.columns(2)
+            with col_edit1:
+                new_ram = st.selectbox("RAM (Actualizar)", opciones_ram, index=idx_ram, key="edit_ram")
+            with col_edit2:
+                new_ant = st.number_input("Antigüedad", min_value=0, value=int(dato_actual['Antigüedad_Años']), key="edit_ant")
+            
+            if st.button("🔄 Actualizar Datos", type="primary"):
+                # Actualizamos en el DataFrame
                 idx = df.index[df['ID_Activo'] == edit_id].tolist()[0]
                 st.session_state.df_activos.at[idx, 'Ubicación'] = new_ubic
                 st.session_state.df_activos.at[idx, 'Estado'] = new_est
-                st.toast(f"{edit_id} actualizado correctamente.", icon="🔄")
+                st.session_state.df_activos.at[idx, 'RAM'] = new_ram
+                st.session_state.df_activos.at[idx, 'Antigüedad_Años'] = new_ant
+                
+                st.toast(f"{edit_id} actualizado correctamente.", icon="🚀")
                 st.rerun()
         else:
             st.warning("No hay activos para editar.")
@@ -93,8 +111,7 @@ with st.sidebar:
             del_id = st.selectbox("Seleccionar ID a eliminar", df['ID_Activo'].sort_values(), key="del_select")
             
             st.warning(f"¿Seguro que deseas eliminar {del_id}?")
-            if st.button("❌ Eliminar Definitivamente", type="primary"):
-                # Filtrar y guardar todo MENOS el eliminado
+            if st.button("❌ Eliminar Definitivamente"):
                 st.session_state.df_activos = df[df['ID_Activo'] != del_id]
                 st.toast(f"Activo {del_id} eliminado.", icon="🗑️")
                 st.rerun()
@@ -102,7 +119,6 @@ with st.sidebar:
             st.info("Inventario vacío.")
 
     st.markdown("---")
-    # Filtros para el Dashboard
     filtro_lab = st.multiselect("Filtro de Visualización:", options=df['Ubicación'].unique(), default=df['Ubicación'].unique())
 
 # --- 3. Panel Principal (DASHBOARD) ---
@@ -116,40 +132,45 @@ else:
 st.title("📊 Dashboard de Control de Activos")
 st.markdown(f"Vista general del inventario ({len(df_filtered)} equipos visibles).")
 
-# KPIs
-c1, c2, c3 = st.columns(3)
+# KPIs Actualizados
+c1, c2, c3, c4 = st.columns(4)
 total = len(df_filtered)
 operativos = len(df_filtered[df_filtered['Estado'] == 'Operativo'])
-obsoletos = len(df_filtered[df_filtered['Estado'] == 'Obsoleto'])
+# Contamos también las repotenciadas como algo positivo
+repotenciadas = len(df_filtered[df_filtered['Estado'] == 'Repotenciada'])
+bajas = len(df_filtered[df_filtered['Estado'] == 'Baja'])
 
 c1.metric("Total Activos", total)
-c2.metric("Operativos", operativos, delta=f"{operativos/total*100:.1f}% del total")
-c3.metric("Obsoletos / Baja", obsoletos, delta_color="inverse")
+c2.metric("Operativos", operativos)
+c3.metric("✨ Repotenciadas", repotenciadas, delta="Upgrade reciente")
+c4.metric("Baja / Descarte", bajas, delta_color="inverse")
 
 st.divider()
 
-# Gráficos (Nativos)
+# Gráficos
 col_graph1, col_graph2 = st.columns(2)
 
 with col_graph1:
     st.subheader("Estado de Conservación")
     if not df_filtered.empty:
+        # Usamos gráfico de barras horizontal para que se lean bien las etiquetas
         st.bar_chart(df_filtered['Estado'].value_counts())
     else:
-        st.info("No hay datos para mostrar.")
+        st.info("No hay datos.")
 
 with col_graph2:
-    st.subheader("Equipos Críticos (> 7 Años)")
-    viejos = df_filtered[df_filtered['Antigüedad_Años'] > 7]
-    if not viejos.empty:
-        st.dataframe(viejos[['ID_Activo', 'Ubicación', 'Estado', 'Antigüedad_Años']], use_container_width=True, hide_index=True)
-    else:
-        st.success("No hay equipos con antigüedad crítica en esta selección.")
+    st.subheader("Distribución de Memoria RAM")
+    if not df_filtered.empty:
+        st.bar_chart(df_filtered['RAM'].value_counts())
 
 # Tabla General
-st.markdown("### 📋 Inventario Completo")
-st.dataframe(df_filtered, use_container_width=True, hide_index=True)
+st.markdown("### 📋 Inventario Detallado")
+st.dataframe(
+    df_filtered[['ID_Activo', 'Ubicación', 'Estado', 'RAM', 'Antigüedad_Años']], 
+    use_container_width=True, 
+    hide_index=True
+)
 
-# Footer
+# --- Footer ---
 st.markdown("---")
-st.caption("Sistema EduTech ITSM v1.0 | Desarrollado por Alexander Galiano")
+st.caption("Sistema EduTech ITSM v4.0 | Desarrollado por Alexander Galiano")
