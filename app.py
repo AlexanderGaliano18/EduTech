@@ -60,7 +60,7 @@ def get_glpi_data():
 # Cargar datos
 df_activos, df_tickets = get_glpi_data()
 
-# --- 2. Barra Lateral ---
+# --- 2. Barra Lateral (Sidebar) ---
 with st.sidebar:
     st.title("EduTech ITSM ⚙️")
     st.markdown("**Módulo de Analítica** integrado con GLPI.")
@@ -72,15 +72,33 @@ with st.sidebar:
         options=df_activos['Ubicación'].unique(),
         default=df_activos['Ubicación'].unique()
     )
-    st.info("Estado: 🟢 Online (Versión Lite)")
+    
+    # Lógica de Filtrado
+    if filtro_lab:
+        df_activos_filt = df_activos[df_activos['Ubicación'].isin(filtro_lab)]
+        df_tickets_filt = df_tickets[df_tickets['Ubicación'].isin(filtro_lab)]
+    else:
+        df_activos_filt = df_activos
+        df_tickets_filt = df_tickets
 
-# Filtrar DataFrames
-if filtro_lab:
-    df_activos_filt = df_activos[df_activos['Ubicación'].isin(filtro_lab)]
-    df_tickets_filt = df_tickets[df_tickets['Ubicación'].isin(filtro_lab)]
-else:
-    df_activos_filt = df_activos
-    df_tickets_filt = df_tickets
+    # --- BOTÓN DE DESCARGA (EL EXTRA) ---
+    st.markdown("---")
+    st.markdown("### 📥 Exportar Reporte")
+    
+    # Convertir dataframe a CSV
+    csv = df_activos_filt.to_csv(index=False).encode('utf-8')
+    
+    st.download_button(
+        label="Descargar Inventario (CSV)",
+        data=csv,
+        file_name='inventario_edutech.csv',
+        mime='text/csv',
+        help="Descarga la lista de equipos filtrada para abrir en Excel."
+    )
+    # ------------------------------------
+    
+    st.markdown("---")
+    st.info("Estado: 🟢 Online (Versión Lite)")
 
 # --- 3. Panel Principal ---
 st.title("📊 Monitor de Infraestructura Tecnológica Escolar")
@@ -103,12 +121,11 @@ col4.metric("Tiempo Medio (MTTR)", f"{mttr:.1f} Hrs")
 
 st.divider()
 
-# --- Gráficos Nativos (Sin Plotly) ---
+# --- Gráficos Nativos ---
 col_izq, col_der = st.columns(2)
 
 with col_izq:
     st.subheader("Estado del Parque Informático")
-    # Preparamos datos para gráfico de barras simple
     estado_counts = df_activos_filt['Estado'].value_counts()
     st.bar_chart(estado_counts)
     st.caption("Cantidad de equipos por estado.")
