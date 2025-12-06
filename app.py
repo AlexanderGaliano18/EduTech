@@ -57,6 +57,9 @@ mis_aulas = st.session_state.lista_labs
 
 # --- 2. Barra Lateral: PANELES DE GESTIÓN ---
 with st.sidebar:
+    # Mostrar Logo SVG
+    st.image("img/logo.png", width=250) # Asegúrate que la ruta sea correcta
+    
     st.title("EduTech ITSM ⚙️")
     
     # --- NUEVO MÓDULO: GESTIÓN DE AMBIENTES (AULAS) ---
